@@ -7,8 +7,9 @@ BUF_SIZE = 2048
 
 
 async def parse_client_data(server_stream, data):
-    new_dict = data.decode('utf-8')
-    new = json.loads(new_dict)
+    """ testing function to parse client data with JSON """
+
+    new = json.loads(data)
     if new['id'] == 3:
         await server_stream.send_all(b'Server do the registration')
     elif new['name'] == 'abc':
