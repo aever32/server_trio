@@ -6,30 +6,44 @@ PORT = 12345
 BUF_SIZE = 2048
 
 
+async def action(server_stream):
+    await server_stream.send_all(b'Server do the action')
+
+
+async def login(server_stream):
+    await server_stream.send_all(b'Login to the server')
+
+
+async def registration(server_stream):
+    await server_stream.send_all(b'Registration on the server')
+
+
 async def parse_client_data(server_stream, data):
     """ testing function to parse client data with JSON """
 
-    new = json.loads(data)
-    if new['id'] == 3:
-        await server_stream.send_all(b'Server do the registration')
-    elif new['name'] == 'abc':
-        await server_stream.send_all(b'Login to the server')
-    else:
-        await server_stream.send_all(b'!EXIT!')
+    client_data = json.loads(data)
+    if client_data['main'] == 'action':
+        await action(server_stream)
+    elif client_data['main'] == 'login':
+        await login(server_stream)
+    elif client_data['main'] == 'registration':
+        await registration(server_stream)
+    # else:
+    #     await server_stream.send_all(b'!EXIT!')
 
 
 async def core_server(server_stream):
-    print("echo_server : new connection started")
+    print("server : new connection started")
     try:
         while True:
             data = await server_stream.receive_some(BUF_SIZE)
-            print("echo_server : received data {}".format(data))
+            print("server : received data {}".format(data))
             if not data:
-                print("echo_server : connection closed")
+                print("server : connection closed")
                 return
             await parse_client_data(server_stream, data)
     except Exception as exc:
-        print("echo_server : crashed: {} ".format(exc))
+        print("server : crashed: {} ".format(exc))
 
 
 async def main():
