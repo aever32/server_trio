@@ -1,19 +1,21 @@
 import json
 # import logging
 import trio
-import trio_mysql
+import trio_mysql.cursors
 
 HOST = '0.0.0.0'
-PORT = 12345
+PORT = 12346
 BUF_SIZE = 2048
 
 DB_LOGIN = 'root'
 DB_PASSWORD = 'root'
+DB_PORT = 3306
 DB_HOST = 'localhost'
 DB_NAME = 'game'
 DB_CHARSET = 'utf8mb4'
 
 connection = trio_mysql.connect(host=DB_HOST,
+                                port=DB_PORT,
                                 user=DB_LOGIN,
                                 password=DB_PASSWORD,
                                 db=DB_NAME,
@@ -33,7 +35,16 @@ async def action(server_stream, data):
 async def login(server_stream, data):
     # Вход: логин, пароль
     # Выход: в случае успеха отсылает клиенту данные из БД
-    await server_stream.send_all(b'Login to the server')
+    async with connection as conn:
+        async with conn.cursor() as cursor:
+            # Read a single record
+            sql = "SELECT id FROM users WHERE login = %s and password = %s"
+            await cursor.execute(sql, (data['login'], data['password']))
+            result = await cursor.fetchone()
+            if result is None:
+                await server_stream.send_all(b'Incorrect login')
+            else:
+                await server_stream.send_all(b'Login correct')
 
 
 async def registration(server_stream, data):
@@ -42,28 +53,25 @@ async def registration(server_stream, data):
     async with connection as conn:
         async with conn.cursor() as cursor:
             # Create a new record
-            sql = "INSERT INTO 'Users' ('login', 'password, 'nickname', 'email') VALUES (%s, %s, %s, %s)"
+            sql = "INSERT INTO users (login, password, nickname, email) VALUES (%s, %s, %s, %s)"
             await cursor.execute(sql, (data['login'], data['password'], data['nickname'], data['email']))
         # connection is not autocommit by default. So you must commit to save
         # your changes.
-        conn.commit()
+            await conn.commit()
         await server_stream.send_all(b'Registration is successful')
-
-
-async def text_filter(text):
-    """ text filter of client data for protection DB """
-    pass
 
 
 async def parse_client_data(server_stream, data):
     """ testing function to parse client data with JSON """
     client_data = json.loads(data)
-    if client_data['main'] == 'action':
+    if client_data['main'] == 'act':
         await action(server_stream, client_data)
-    elif client_data['main'] == 'login':
+    elif client_data['main'] == 'log':
         await login(server_stream, client_data)
-    elif client_data['main'] == 'registration':
+    elif client_data['main'] == 'reg':
         await registration(server_stream, client_data)
+    else:
+        await server_stream.send_all(b'Wrong request!')
 
 
 async def core_server(server_stream):
