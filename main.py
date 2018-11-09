@@ -4,23 +4,20 @@ import trio
 import trio_mysql.cursors
 
 HOST = '0.0.0.0'
-PORT = 12346
+PORT = 12345
 BUF_SIZE = 2048
 
-DB_LOGIN = 'root'
-DB_PASSWORD = 'root'
-DB_PORT = 3306
-DB_HOST = 'localhost'
-DB_NAME = 'game'
-DB_CHARSET = 'utf8mb4'
+DB_CONFIG = {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "user": "root",
+    "password": "root",
+    "database": "game",
+    "charset": "utf8mb4",
+    "cursorclass": trio_mysql.cursors.DictCursor,
+}
 
-connection = trio_mysql.connect(host=DB_HOST,
-                                port=DB_PORT,
-                                user=DB_LOGIN,
-                                password=DB_PASSWORD,
-                                db=DB_NAME,
-                                charset=DB_CHARSET,
-                                cursorclass=trio_mysql.cursors.DictCursor)
+connection = trio_mysql.connect(**DB_CONFIG)
 
 # FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
 # logging.basicConfig(format=FORMAT, filename='logs.log')
@@ -55,8 +52,8 @@ async def registration(server_stream, data):
             # Create a new record
             sql = "INSERT INTO users (login, password, nickname, email) VALUES (%s, %s, %s, %s)"
             await cursor.execute(sql, (data['login'], data['password'], data['nickname'], data['email']))
-        # connection is not autocommit by default. So you must commit to save
-        # your changes.
+            # connection is not autocommit by default. So you must commit to save
+            # your changes.
             await conn.commit()
         await server_stream.send_all(b'Registration is successful')
 
