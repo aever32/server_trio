@@ -7,8 +7,8 @@ cursor = connection.cursor()
 
 try:
     create_db = """
-                CREATE DATABASE IF NOT EXISTS games;
-                USE games;
+                CREATE DATABASE IF NOT EXISTS game;
+                USE game;
                 CREATE TABLE IF NOT EXISTS users (
                 id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
                 login char(20) NOT NULL UNIQUE KEY,
