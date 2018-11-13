@@ -11,12 +11,13 @@ try:
                 USE games;
                 CREATE TABLE IF NOT EXISTS users (
                 id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
-                login char(20) NOT NULL UNIQUE KEY,
+                email char(50) NOT NULL UNIQUE KEY,
                 password char(30) NOT NULL,
-                nickname char(20) NOT NULL,
-                email char(40) NOT NULL,
-                updated TIMESTAMP NOT NULL,
-                created TIMESTAMP NOT NULL 
+                hash_pass char(20) NOT NULL,
+                nickname char(20) NOT NULL UNIQUE KEY,
+                phone_num varchar(15) UNIQUE KEY,
+                created TIMESTAMP NOT NULL Default CURRENT_TIMESTAMP,
+                updated TIMESTAMP NOT NULL Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 );"""
     cursor.execute(create_db)
 
