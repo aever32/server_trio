@@ -1,6 +1,7 @@
+import hashlib
 import json
 # import logging
-import re
+# import re
 import secrets
 import trio
 import trio_mysql.cursors
@@ -27,12 +28,44 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # logging.basicConfig(format=FORMAT, filename='logs.log')
 
 
-async def action(server_stream, data, token):
-    # Вход: токен, объект взаимодействия и само действие
-    # Выход: в случае успеха, отослать клиенту сообщение успешной операции
+async def filter_client_data(data: dict):
+    if data['client'] == 'act':
+        print('test ACT')
+        return True
+    elif data['client'] == 'reg':
+        len(data['email'])
+        print('test REG')
+        return True
+    elif data['client'] == 'log':
+        print('test LOG')
+        return True
+    else:
+        return False
+
+
+async def get_hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+
+async def compare_password(hashed_password: str, user_password: str) -> bool:
+    return hashed_password == hashlib.sha256(user_password.encode('utf-8')).hexdigest()
+
+
+async def generate_token(db_user_id: dict) -> dict:
+    id_key = db_user_id['id']
+    TOKENS[id_key] = secrets.token_urlsafe(16)
+    token = {'server': 'login', 'id': id_key, 'token': TOKENS[id_key]}
+    return token
+
+
+async def send_json_to_client(server_stream, data: dict):
+    json_data = json.dumps(data)
+    await server_stream.send_all(bytes(json_data.encode('utf-8')))
+
+
+async def action(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            # Create a new record
             sql = "UPDATE users SET updated=now() WHERE email = %s"
             await cursor.execute(sql, (data['email']))
             # connection is not autocommit by default. So you must commit to save
@@ -41,58 +74,45 @@ async def action(server_stream, data, token):
         await server_stream.send_all(b'Server do the action')
 
 
-async def get_token():
-    pass
-
-
-async def generate_token(key):
-    id_key = key['id']
-    TOKENS[id_key] = secrets.token_urlsafe(16)
-    print(TOKENS[id_key])
-    return TOKENS[id_key]
-
-
-async def login(server_stream, data):
-    # Вход: логин, пароль
-    # Выход: в случае успеха отсылает клиенту данные из БД и выдает временный токен.
+async def login(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            # Read a single record
             sql = "SELECT id FROM users WHERE email = %s and password = %s"
-            await cursor.execute(sql, (data['email'], data['password']))
-            result = await cursor.fetchone()
-            if result is None:
-                await server_stream.send_all(None)
+            await cursor.execute(sql, (data['email'], await get_hash_password(data['password'])))
+            user_id = await cursor.fetchone()
+            if user_id is None:
+                await server_stream.send_all(b'LOGIN ERROR')
             else:
-                token = await generate_token(result)
-                await server_stream.send_all(bytes(token.encode('utf-8')))
+                print(await compare_password(hashed_password=user_id['password'], user_password=data['password']))
+                token = await generate_token(user_id)
+                await send_json_to_client(server_stream, token)
 
 
-async def registration(server_stream, data):
-    # Вход: логин, пароль, ник, эмейл, номер тел.
-    # Выход: ответ клиенту
+async def registration(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            # Create a new record
             sql = "INSERT INTO users (email, password, nickname) VALUES (%s, %s, %s)"
-            await cursor.execute(sql, (data['email'], data['password'], data['nickname']))
+            await cursor.execute(sql, (data['email'], await get_hash_password(data['password']), data['nickname']))
             # connection is not autocommit by default. So you must commit to save
             # your changes.
             await conn.commit()
         await server_stream.send_all(b'Registration is successful')
 
 
-async def parse_client_data(server_stream, data):
-    """ testing function to parse client data with JSON """
+async def parse_client_data(server_stream, data: bytes):
     client_data = json.loads(data)
-    if client_data['main'] == 'act':
-        await action(server_stream, client_data)
-    elif client_data['main'] == 'log':
-        await login(server_stream, client_data)
-    elif client_data['main'] == 'reg':
-        await registration(server_stream, client_data)
+    clean_data = await filter_client_data(client_data)
+    if clean_data:
+        if client_data['client'] == 'act':
+            await action(server_stream, client_data)
+        elif client_data['client'] == 'log':
+            await login(server_stream, client_data)
+        elif client_data['client'] == 'reg':
+            await registration(server_stream, client_data)
+        else:
+            await server_stream.send_all(b'Wrong request! 2')
     else:
-        await server_stream.send_all(b'Wrong request!')
+        await server_stream.send_all(b'Wrong request! 1')
 
 
 async def core_server(server_stream):

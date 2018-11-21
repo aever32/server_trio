@@ -11,41 +11,60 @@ client_socket.connect(ADDR)
 
 print('Connected to: ', ADDR)
 
-while True:
-    msg = input('Send data to server: ')
 
-    if msg == 'exit':
-        client_socket.close()
-        print('Client is close!')
-        break
+def parse_data_from_server(server_data):
+    try:
+        json_data = json.loads(server_data)
+        print(json_data)
+    except ValueError:
+        print(server_data)
 
-    elif msg:
-        if msg == 'reg':
-            email = str(input('Email: '))
-            password = str(input('Password: '))
-            nickname = str(input('Nickname: '))
-            json_data = json.dumps({'main': 'reg',
-                                    'email': email,
-                                    'password': password,
-                                    'nickname': nickname,
-                                    })
-            client_socket.send(bytes(json_data.encode('utf-8')))
 
-        elif msg == 'log':
-            email = str(input('Email: '))
-            password = str(input('Password: '))
-            json_data = json.dumps({'main': 'log',
-                                    'email': email,
-                                    'password': password})
-            client_socket.send(bytes(json_data.encode('utf-8')))
+def main():
+    while True:
+        msg = input('Send data to server: ')
 
-        elif msg == 'act':
-            token = str(input('Token: '))
-            json_data = json.dumps({'mail': 'act',
-                                    'token': token})
-            client_socket.send(bytes(json_data.encode('utf-8')))
+        if msg == 'exit':
+            client_socket.close()
+            print('Client is close!')
+            break
 
-        else:
-            client_socket.send(msg.encode('utf-8'))
+        elif msg:
+            if msg == 'reg':
+                email = str(input('Email: '))
+                password = str(input('Password: '))
+                nickname = str(input('Nickname: '))
+                json_data = json.dumps({'client': 'reg',
+                                        'email': email,
+                                        'password': password,
+                                        'nickname': nickname,
+                                        })
+                client_socket.send(bytes(json_data.encode('utf-8')))
 
-        print(client_socket.recv(BUFFER).decode('utf-8'))
+            elif msg == 'log':
+                email = str(input('Email: '))
+                password = str(input('Password: '))
+                json_data = json.dumps({'client': 'log',
+                                        'email': email,
+                                        'password': password})
+                client_socket.send(bytes(json_data.encode('utf-8')))
+
+            elif msg == 'act':
+                token = str(input('Token: '))
+                obj = str(input('Object: '))
+                action = str(input('Action: '))
+                json_data = json.dumps({'client': 'act',
+                                        'token': token,
+                                        'object': obj,
+                                        'action': action})
+                client_socket.send(bytes(json_data.encode('utf-8')))
+
+            else:
+                client_socket.send(msg.encode('utf-8'))
+
+        server_data = client_socket.recv(BUFFER)
+        parse_data_from_server(server_data)
+
+
+if __name__ == '__main__':
+    main()

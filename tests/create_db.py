@@ -12,8 +12,7 @@ try:
                 CREATE TABLE IF NOT EXISTS users (
                 id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
                 email char(50) NOT NULL UNIQUE KEY,
-                password char(30) NOT NULL,
-                hash_pass char(20) NOT NULL,
+                password char(64) NOT NULL,
                 nickname char(20) NOT NULL UNIQUE KEY,
                 phone_num varchar(15) UNIQUE KEY,
                 created TIMESTAMP NOT NULL Default CURRENT_TIMESTAMP,
