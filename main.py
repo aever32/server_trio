@@ -28,14 +28,32 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # logging.basicConfig(format=FORMAT, filename='logs.log')
 
 
+async def clean_registration(data: dict) -> bool:
+    email_len = len(data['email'])
+    print(email_len)
+    password_len = len(data['password'])
+    nickname_len = len(data['nickname'])
+    if (10 <= email_len <= 50) and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
+        return True
+    else:
+        return False
+
+
+async def clean_login(data: dict) -> bool:
+    pass
+
+
+async def clean_action(data: dict) -> bool:
+    pass
+
+
 async def filter_client_data(data: dict):
     if data['client'] == 'act':
         print('test ACT')
         return True
     elif data['client'] == 'reg':
-        len(data['email'])
         print('test REG')
-        return True
+        return await clean_registration(data)
     elif data['client'] == 'log':
         print('test LOG')
         return True
@@ -68,10 +86,8 @@ async def action(server_stream, data: dict):
         async with conn.cursor() as cursor:
             sql = "UPDATE users SET updated=now() WHERE email = %s"
             await cursor.execute(sql, (data['email']))
-            # connection is not autocommit by default. So you must commit to save
-            # your changes.
             await conn.commit()
-        await server_stream.send_all(b'Server do the action')
+            await server_stream.send_all(b'Server do the action')
 
 
 async def login(server_stream, data: dict):
@@ -83,7 +99,6 @@ async def login(server_stream, data: dict):
             if user_id is None:
                 await server_stream.send_all(b'LOGIN ERROR')
             else:
-                print(await compare_password(hashed_password=user_id['password'], user_password=data['password']))
                 token = await generate_token(user_id)
                 await send_json_to_client(server_stream, token)
 
@@ -91,12 +106,18 @@ async def login(server_stream, data: dict):
 async def registration(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            sql = "INSERT INTO users (email, password, nickname) VALUES (%s, %s, %s)"
+            sql = "INSERT IGNORE INTO users (email, password, nickname) VALUES (%s, %s, %s)"
             await cursor.execute(sql, (data['email'], await get_hash_password(data['password']), data['nickname']))
             # connection is not autocommit by default. So you must commit to save
             # your changes.
             await conn.commit()
-        await server_stream.send_all(b'Registration is successful')
+            sql2 = "show warnings"
+            if await cursor.execute(sql2):
+                result = {'result': 'failed'}
+                await send_json_to_client(server_stream, result)
+            else:
+                result = {'result': 'success'}
+                await send_json_to_client(server_stream, result)
 
 
 async def parse_client_data(server_stream, data: bytes):
@@ -110,9 +131,9 @@ async def parse_client_data(server_stream, data: bytes):
         elif client_data['client'] == 'reg':
             await registration(server_stream, client_data)
         else:
-            await server_stream.send_all(b'Wrong request! 2')
+            await server_stream.send_all(b'Wrong client request!')
     else:
-        await server_stream.send_all(b'Wrong request! 1')
+        await server_stream.send_all(b'Not clean data!')
 
 
 async def core_server(server_stream):

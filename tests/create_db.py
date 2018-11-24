@@ -10,7 +10,7 @@ try:
                 CREATE DATABASE IF NOT EXISTS game;
                 USE game;
                 CREATE TABLE IF NOT EXISTS users (
-                id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
+                id int(11) unsigned PRIMARY KEY AUTO_INCREMENT,
                 email char(50) NOT NULL UNIQUE KEY,
                 password char(64) NOT NULL,
                 nickname char(20) NOT NULL UNIQUE KEY,
