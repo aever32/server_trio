@@ -10,7 +10,7 @@ HOST = '0.0.0.0'
 PORT = 12345
 BUF_SIZE = 2048
 
-# Глобальный словарь токенов
+# Глобальный словарь {id пользователя: токен}
 TOKENS = {}
 
 DB_CONFIG = {
@@ -29,7 +29,7 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # logging.basicConfig(format=FORMAT, filename='logs.log')
 
 
-# Проверка регистрации
+# Проверка блока регистрации
 async def clean_registration(data: dict) -> bool:
     email_len = len(data['email'])
     password_len = len(data['password'])
@@ -40,24 +40,27 @@ async def clean_registration(data: dict) -> bool:
         return False
 
 
-# Проверка аутентификации
+# Проверка блока аутентификации
 async def clean_login(data: dict) -> bool:
-    pass
+    return True
 
 
-# Проверки действий
+# Проверка блока действий
 async def clean_action(data: dict) -> bool:
-    pass
+    if data['token'] == TOKENS.get(data['id']):
+        return True
+    else:
+        return False
 
 
 # Проверка корректности данных клиента
 async def filter_client_data(data: dict) -> bool:
     if data['client'] == 'act':
-        return True
+        return await clean_action(data)
     elif data['client'] == 'reg':
         return await clean_registration(data)
     elif data['client'] == 'log':
-        return True
+        return await clean_login(data)
     else:
         return False
 
@@ -88,12 +91,16 @@ async def send_json_to_client(server_stream, data: dict):
 
 # Основное действие клиента
 async def action(server_stream, data: dict):
-    async with connection as conn:
-        async with conn.cursor() as cursor:
-            sql = "UPDATE users SET updated=now() WHERE email = %s"
-            await cursor.execute(sql, (data['email']))
-            await conn.commit()
-            await server_stream.send_all(b'Server do the action')
+    if not data.get('email'):
+        result = {'result': 'it`s alive!'}
+        await send_json_to_client(server_stream, result)
+    else:
+        async with connection as conn:
+            async with conn.cursor() as cursor:
+                sql = "UPDATE users SET updated=now() WHERE email = %s"
+                await cursor.execute(sql, (data['email']))
+                await conn.commit()
+                await server_stream.send_all(b'Server do the action')
 
 
 # Аутентификация пользователя и генерация токена
@@ -114,7 +121,7 @@ async def login(server_stream, data: dict):
 async def registration(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            sql_check = "SELECT email, nickname FROM users WHERE email = %s or nickname = %s"
+            sql_check = "SELECT id FROM users WHERE email = %s or nickname = %s"
             await cursor.execute(sql_check,
                                  (data['email'], data['nickname']))
             user_exist = await cursor.fetchone()
