@@ -32,7 +32,6 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # Проверка регистрации
 async def clean_registration(data: dict) -> bool:
     email_len = len(data['email'])
-    print(email_len)
     password_len = len(data['password'])
     nickname_len = len(data['nickname'])
     if (10 <= email_len <= 50) and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
@@ -143,8 +142,6 @@ async def parse_client_data(server_stream, data: bytes):
             await login(server_stream, client_data)
         elif client_data['client'] == 'reg':
             await registration(server_stream, client_data)
-        else:
-            await server_stream.send_all(b'Wrong client request!')
     else:
         await server_stream.send_all(b'Not clean data!')
 
@@ -172,5 +169,6 @@ async def main():
         await trio.serve_tcp(core_server, PORT, host=HOST)
     except KeyboardInterrupt:
         print('Server was stopped! CTRL + C')
+
 # Запуск главного цикла программы
 trio.run(main) 
