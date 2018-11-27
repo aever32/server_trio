@@ -22,12 +22,12 @@ def parse_data_from_server(server_data):
 
 def main():
     while True:
-        print("Введите требуемое значение: ")
+        print("Введите требуемое значение")
         print("reg - регистрация")
         print("log - вход")
         print("act - действие")
         print("exit - выход")
-        msg = input('')
+        msg = input(':')
 
         if msg == 'exit':
             client_socket.close()
@@ -36,9 +36,9 @@ def main():
 
         elif msg:
             if msg == 'reg':
-                email = str(input('Введите ваш Email минимум 10 символов'))
-                password = str(input('Password от 6 до 30 символов '))
-                nickname = str(input('Nickname от 3 до 20 символов '))
+                email = str(input('Введите ваш Email минимум 10 символов: '))
+                password = str(input('Password от 6 до 30 символов: '))
+                nickname = str(input('Nickname от 3 до 20 символов: '))
                 json_data = json.dumps({'client': 'reg',
                                         'email': email,
                                         'password': password,
