@@ -53,13 +53,10 @@ async def clean_action(data: dict) -> bool:
 # Проверка корректности данных клиента
 async def filter_client_data(data: dict) -> bool:
     if data['client'] == 'act':
-        print('test ACT')
         return True
     elif data['client'] == 'reg':
-        print('test REG')
         return await clean_registration(data)
     elif data['client'] == 'log':
-        print('test LOG')
         return True
     else:
         return False
@@ -117,16 +114,20 @@ async def login(server_stream, data: dict):
 async def registration(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            sql = "INSERT IGNORE INTO users (email, password, nickname) VALUES (%s, %s, %s)"
-            await cursor.execute(sql, (data['email'], await get_hash_password(data['password']), data['nickname']))
-            # connection is not autocommit by default. So you must commit to save
-            # your changes.
-            await conn.commit()
-            sql2 = "show warnings"
-            if await cursor.execute(sql2):
-                result = {'result': 'failed'}
+            sql_check = "SELECT email, nickname FROM users WHERE email = %s or nickname = %s"
+            await cursor.execute(sql_check,
+                                 (data['email'], data['nickname']))
+            user_exist = await cursor.fetchone()
+            if user_exist:
+                result = {'result': 'user exist'}
                 await send_json_to_client(server_stream, result)
             else:
+                sql_insert = "INSERT INTO users (email, password, nickname) VALUES (%s, %s, %s)"
+                await cursor.execute(sql_insert,
+                                     (data['email'], await get_hash_password(data['password']), data['nickname']))
+                # connection is not autocommit by default. So you must commit to save
+                # your changes.
+                await conn.commit()
                 result = {'result': 'success'}
                 await send_json_to_client(server_stream, result)
 
