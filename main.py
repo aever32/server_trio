@@ -10,6 +10,7 @@ HOST = '0.0.0.0'
 PORT = 12345
 BUF_SIZE = 2048
 
+# Глобальный словарь токенов
 TOKENS = {}
 
 DB_CONFIG = {
@@ -28,6 +29,7 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # logging.basicConfig(format=FORMAT, filename='logs.log')
 
 
+# Проверка регистрации
 async def clean_registration(data: dict) -> bool:
     email_len = len(data['email'])
     print(email_len)
@@ -39,15 +41,18 @@ async def clean_registration(data: dict) -> bool:
         return False
 
 
+# Проверка аутентификации
 async def clean_login(data: dict) -> bool:
     pass
 
 
+# Проверки действий
 async def clean_action(data: dict) -> bool:
     pass
 
 
-async def filter_client_data(data: dict):
+# Проверка корректности данных клиента
+async def filter_client_data(data: dict) -> bool:
     if data['client'] == 'act':
         print('test ACT')
         return True
@@ -61,14 +66,17 @@ async def filter_client_data(data: dict):
         return False
 
 
+# Генерация хэш пароля
 async def get_hash_password(password: str) -> str:
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 
+# Сравнение хэш пароля
 async def compare_password(hashed_password: str, user_password: str) -> bool:
     return hashed_password == hashlib.sha256(user_password.encode('utf-8')).hexdigest()
 
 
+# Генерация токена
 async def generate_token(db_user_id: dict) -> dict:
     id_key = db_user_id['id']
     TOKENS[id_key] = secrets.token_urlsafe(16)
@@ -76,11 +84,13 @@ async def generate_token(db_user_id: dict) -> dict:
     return token
 
 
+# Интерфейс для отправки json клиенту
 async def send_json_to_client(server_stream, data: dict):
     json_data = json.dumps(data)
     await server_stream.send_all(bytes(json_data.encode('utf-8')))
 
 
+# Основное действие клиента
 async def action(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
@@ -90,6 +100,7 @@ async def action(server_stream, data: dict):
             await server_stream.send_all(b'Server do the action')
 
 
+# Аутентификация пользователя и генерация токена
 async def login(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
@@ -103,6 +114,7 @@ async def login(server_stream, data: dict):
                 await send_json_to_client(server_stream, token)
 
 
+# Регистрация нового пользователя
 async def registration(server_stream, data: dict):
     async with connection as conn:
         async with conn.cursor() as cursor:
@@ -120,6 +132,7 @@ async def registration(server_stream, data: dict):
                 await send_json_to_client(server_stream, result)
 
 
+# Интерфейс для обработки данных от клиента
 async def parse_client_data(server_stream, data: bytes):
     client_data = json.loads(data)
     clean_data = await filter_client_data(client_data)
@@ -136,6 +149,7 @@ async def parse_client_data(server_stream, data: bytes):
         await server_stream.send_all(b'Not clean data!')
 
 
+# Получение данных от клиента
 async def core_server(server_stream):
     # logging.info("server : new connection started")
     print("server : new connection started")
@@ -152,6 +166,7 @@ async def core_server(server_stream):
         print("server : crashed: {} ".format(exc))
 
 
+# Ожидание подключения новых клиентов.
 async def main():
     try:
         await trio.serve_tcp(core_server, PORT, host=HOST)
