@@ -172,5 +172,5 @@ async def main():
         await trio.serve_tcp(core_server, PORT, host=HOST)
     except KeyboardInterrupt:
         print('Server was stopped! CTRL + C')
-
-trio.run(main)
+# Запуск главного цикла программы
+trio.run(main) 
