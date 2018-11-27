@@ -6,28 +6,38 @@ PORT = 12345
 ADDR = (HOST, PORT)
 BUFFER = 1024
 
+TOKEN = {}
+
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.connect(ADDR)
 
 print('Connected to: ', ADDR)
 
 
+def parse_token(json_data: dict):
+    TOKEN['id'] = json_data['id']
+    TOKEN['token'] = json_data['token']
+
+
 def parse_data_from_server(server_data):
     try:
         json_data = json.loads(server_data)
         print(json_data)
+        if json_data['server'] == 'login':
+            parse_token(json_data)
     except ValueError:
         print(server_data)
+    except KeyError:
+        pass
 
 
 def main():
     while True:
-        print("Введите требуемое значение")
-        print("reg - регистрация")
-        print("log - вход")
-        print("act - действие")
-        print("exit - выход")
-        msg = input(':')
+        print('reg - регистрация')
+        print('log - вход')
+        print('act - действие')
+        print('exit - выход')
+        msg = input('Введите требуемое значение:')
 
         if msg == 'exit':
             client_socket.close()
@@ -55,10 +65,12 @@ def main():
                 client_socket.send(bytes(json_data.encode('utf-8')))
 
             elif msg == 'act':
-                token = str(input('Token: '))
                 obj = str(input('Object: '))
                 action = str(input('Action: '))
+                id_token = TOKEN['id']
+                token = TOKEN['token']
                 json_data = json.dumps({'client': 'act',
+                                        'id': id_token,
                                         'token': token,
                                         'object': obj,
                                         'action': action})
