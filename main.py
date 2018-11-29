@@ -43,7 +43,7 @@ async def clean_registration(data: dict) -> dict:
     password_len = len(data['password'])
     nickname_len = len(data['nickname'])
     if is_valid and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
-        return {'flag': 'true', 'result': 'email ok'}
+        return {'flag': 'true'}
     else:
         return {'flag': 'false', 'result': 'email failed'}
 
