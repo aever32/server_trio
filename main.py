@@ -1,7 +1,7 @@
 import hashlib
 import json
 # import logging
-# import re
+import re
 import secrets
 import trio
 import trio_mysql.cursors
@@ -30,14 +30,22 @@ connection = trio_mysql.connect(**DB_CONFIG)
 
 
 # Проверка блока регистрации
-async def clean_registration(data: dict) -> bool:
-    email_len = len(data['email'])
+async def clean_registration(data: dict) -> dict:
+    # проверка email по шаблону
+    # шаблон Email
+    pattern = re.compile('(^|\s)[-a-z0-9_.]+@([-a-z0-9]+\.)+[a-z]{2,6}(\s|$)')
+    # Полученное с клиента значение
+    address = data['email']
+    # результат проверки
+    is_valid = pattern.match(address)
+
+    # email_len = len(data['email'])
     password_len = len(data['password'])
     nickname_len = len(data['nickname'])
-    if (10 <= email_len <= 50) and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
-        return True
+    if is_valid and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
+        return {'flag': 'true', 'result': 'email ok'}
     else:
-        return False
+        return {'flag': 'false', 'result': 'email failed'}
 
 
 # Проверка блока аутентификации
@@ -54,7 +62,7 @@ async def clean_action(data: dict) -> bool:
 
 
 # Проверка корректности данных клиента
-async def filter_client_data(data: dict) -> bool:
+async def filter_client_data(data: dict) -> dict:
     if data['client'] == 'act':
         return await clean_action(data)
     elif data['client'] == 'reg':
@@ -143,7 +151,7 @@ async def registration(server_stream, data: dict):
 async def parse_client_data(server_stream, data: bytes):
     client_data = json.loads(data)
     clean_data = await filter_client_data(client_data)
-    if clean_data:
+    if clean_data['flag'] == 'true':
         if client_data['client'] == 'act':
             await action(server_stream, client_data)
         elif client_data['client'] == 'log':
@@ -151,7 +159,7 @@ async def parse_client_data(server_stream, data: bytes):
         elif client_data['client'] == 'reg':
             await registration(server_stream, client_data)
     else:
-        await server_stream.send_all(b'Not clean data!')
+        await send_json_to_client(server_stream, clean_data)
 
 
 # Получение данных от клиента
