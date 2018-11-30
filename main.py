@@ -1,11 +1,10 @@
 import hashlib
 import json
 # import logging
-import secrets
 import re
+import secrets
 import trio
 import trio_mysql.cursors
-
 
 HOST = '0.0.0.0'
 PORT = 12345
@@ -29,11 +28,9 @@ connection = trio_mysql.connect(**DB_CONFIG)
 # FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
 # logging.basicConfig(format=FORMAT, filename='logs.log')
 
-#async def send_mes_to_client(server_stream, msg)
-#    await send_json_to_client(server_stream, msg)
 
 # Проверка блока регистрации
-async def clean_registration(data: dict) -> bool:
+async def clean_registration(server_stream, data: dict) -> dict:
     # проверка email по шаблону
     # шаблон Email
     pattern = re.compile('(^|\s)[-a-z0-9_.]+@([-a-z0-9]+\.)+[a-z]{2,6}(\s|$)')
@@ -41,23 +38,17 @@ async def clean_registration(data: dict) -> bool:
     address = data['email']
     # результат проверки
     is_valid = pattern.match(address)
-    # действие по результатам проверки
-    if is_valid:
-        #действие при правильно введённых данных
-        print('правильный email:', is_valid.group())
-        result = {'result': 'правильный Emeil'}
-        await send_json_to_client(result)
-    else:
-        # действие при неправильно введённых данных
-        print('неверный email! введите email...\n')
-
-    #email_len = len(data['email'])
+    # email_len = len(data['email'])
     password_len = len(data['password'])
     nickname_len = len(data['nickname'])
-    if (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
-        return True
+    if is_valid and (6 <= password_len <= 30) and (3 <= nickname_len <= 20):
+        result = {'flag': 'false', 'result': 'email OK'}
+        await send_json_to_client(server_stream, result)
+        # FIXME Тут придется всю логику снова переписывать под параметр server_stream,
+        # чтобы была возможность использовать отправку клиенту напрямую из функций проверки данных.
+        return {'flag': 'true'}
     else:
-        return False
+        return {'flag': 'false', 'result': 'email failed'}
 
 
 # Проверка блока аутентификации
@@ -74,11 +65,11 @@ async def clean_action(data: dict) -> bool:
 
 
 # Проверка корректности данных клиента
-async def filter_client_data(data: dict) -> bool:
+async def filter_client_data(server_stream, data: dict) -> dict:
     if data['client'] == 'act':
         return await clean_action(data)
     elif data['client'] == 'reg':
-        return await clean_registration(data)
+        return await clean_registration(server_stream, data)
     elif data['client'] == 'log':
         return await clean_login(data)
     else:
@@ -162,8 +153,8 @@ async def registration(server_stream, data: dict):
 # Интерфейс для обработки данных от клиента
 async def parse_client_data(server_stream, data: bytes):
     client_data = json.loads(data)
-    clean_data = await filter_client_data(client_data)
-    if clean_data:
+    clean_data = await filter_client_data(server_stream, client_data)
+    if clean_data['flag'] == 'true':
         if client_data['client'] == 'act':
             await action(server_stream, client_data)
         elif client_data['client'] == 'log':
@@ -171,7 +162,7 @@ async def parse_client_data(server_stream, data: bytes):
         elif client_data['client'] == 'reg':
             await registration(server_stream, client_data)
     else:
-        await server_stream.send_all(b'Not clean data!')
+        await send_json_to_client(server_stream, clean_data)
 
 
 # Получение данных от клиента
