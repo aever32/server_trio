@@ -5,6 +5,7 @@ import re
 import secrets
 import trio
 import trio_mysql.cursors
+from test_input_data import *
 
 HOST = '0.0.0.0'
 PORT = 12345
