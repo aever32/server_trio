@@ -48,7 +48,7 @@ def main():
             if msg == 'reg':
                 email = str(input('Введите ваш Email минимум 10 символов: '))
                 password = str(input('Password от 6 до 30 символов: '))
-                nickname = str(input('Nickname от 3 до 20 символов: '))
+                nickname = str(input('Nickname от 3 до 30 символов: '))
                 json_data = json.dumps({'client': 'reg',
                                         'email': email,
                                         'password': password,
