@@ -17,7 +17,7 @@ try:
                 email varchar(128) NOT NULL UNIQUE KEY,
                 password char(64) NOT NULL,
                 nickname varchar(30) NOT NULL UNIQUE KEY,
-                phone_num varchar(15) DEFAULT 0 UNIQUE KEY,
+                phone_num varchar(15) NULL UNIQUE KEY,
                 created TIMESTAMP NOT NULL Default CURRENT_TIMESTAMP,
                 updated TIMESTAMP NOT NULL Default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 );
