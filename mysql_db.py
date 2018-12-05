@@ -7,6 +7,7 @@ DB_CONFIG = {
     "password": "root",
     "database": "game",
     "charset": "utf8mb4",
+    "autocommit": "True",
     "cursorclass": trio_mysql.cursors.DictCursor,
 }
 
@@ -26,13 +27,7 @@ async def execute(cursor, command, arguments):
 async def sql(command, arguments=None):
     async with connection as conn:
         async with conn.cursor() as cursor:
-            result = await execute(cursor, command, arguments)
-            # FIXME временная заплатка для записи в БД
-            # Нужно добавить автокомит или разобраться с ТРАНЗАКЦИЯМИ!
-            # Соединение не автокомитится по умолчанию.
-            # Поэтому нужно использовать комит для сохранения данных в БД
-            await conn.commit()
-            return result
+            return await execute(cursor, command, arguments)
 
 
 async def transaction(callback, arguments):
