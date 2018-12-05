@@ -24,7 +24,7 @@ async def execute(cursor, command, arguments):
 
 
 async def sql(command, arguments=None):
-    async with connection() as conn:
+    async with connection as conn:
         async with conn.cursor() as cursor:
             result = await execute(cursor, command, arguments)
             # FIXME временная заплатка для записи в БД
