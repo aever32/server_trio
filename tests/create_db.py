@@ -22,6 +22,8 @@ async def main():
                             """
                 sql_2 = """
                             USE game;
+                            """
+                sql_3 = """ 
                             CREATE TABLE IF NOT EXISTS users (
                             id int unsigned PRIMARY KEY AUTO_INCREMENT,
                             email varchar(128) NOT NULL UNIQUE KEY,
@@ -34,6 +36,7 @@ async def main():
                             """
                 await cursor.execute(sql_1)
                 await cursor.execute(sql_2)
+                await cursor.execute(sql_3)
 
             except trio_mysql.err.MySQLError as err:
                 print("Failed: {}".format(err))
