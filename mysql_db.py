@@ -18,8 +18,7 @@ async def execute(cursor, command, arguments):
     await cursor.execute(command, arguments)
     try:
         result = await cursor.fetchall()
-    except trio_mysql.err.ProgrammingError as error:
-        print('error in MYSQL execute: {}'.format(error))
+    except trio_mysql.err.ProgrammingError:
         result = None
     return result
 
@@ -33,15 +32,6 @@ async def sql(command, arguments=None):
 async def transaction(callback, arguments):
     async with connection as conn:
         async with conn.cursor() as cursor:
-
-            await cursor.execute('BEGIN')
-
-            try:
-                result = await callback(arguments=arguments,
-                                        execute=lambda command, arguments=None: execute(cursor, command, arguments))
-            except BaseException:
-                await cursor.execute('ROLLBACK')
-                raise
-            else:
-                await cursor.execute('COMMIT')
-            return result
+            async with conn.transaction():
+                return await callback(arguments=arguments,
+                                      execute=lambda command, arguments=None: execute(cursor, command, arguments))
