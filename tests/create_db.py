@@ -40,6 +40,5 @@ async def main():
 
             except trio_mysql.err.MySQLError as err:
                 print("Failed: {}".format(err))
-                exit(1)
 
 trio.run(main)
